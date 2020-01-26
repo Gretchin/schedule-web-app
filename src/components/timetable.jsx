@@ -6,12 +6,14 @@ import {
   TableRow,
   TableCell
 } from "@material-ui/core";
-
 import Activity from "./activity";
 
+// дальше видимо все в процессе с заглушками
+// а для работы со временем крайне рекомендую moment.js
 const dateString = "January 6, 2020";
 const schedule = {
   date: new Date(dateString),
+  //плак плак
   workingHours: [
     new Date(`${dateString} 8:00`),
     new Date(`${dateString} 9:00`),
@@ -82,6 +84,7 @@ class Timeslot {
     this.end.setMinutes(this.end.getMinutes() + lengthInMintues);
   }
 
+  // не уверен но в моменте скорее всего это уже реализовано
   static checkIntersection(first, second) {
     return (
       (first.begining <= second.begining && second.begining < first.end) ||
@@ -99,7 +102,9 @@ const getActivities = () => {
 const mapTimeslots = (currentHour, activities) => {
   const timeslotsInHour = 60 / minutesInTimeslot;
 
-  let mappedTimeslots = [];
+ // тут не нужен let, потому что массив ты мутируешь а не переопределяешь, будет работать и с const
+ // let mappedTimeslots = [];
+  
   for (let i = 0; i < timeslotsInHour; i++) {
     let currentTimeslotStart = new Date(currentHour.begining);
     currentTimeslotStart.setMinutes(
@@ -111,9 +116,12 @@ const mapTimeslots = (currentHour, activities) => {
     );
 
     const activityInTimeslot = filterActivities(activities, currentTimeslot)[0];
-    if (!activityInTimeslot)
+    if (!activityInTimeslot) {
+      // скобочки лучше всегда ставить
       mappedTimeslots.push({ content: null, colspan: 1 });
+    }
     else {
+      // и переводы в моменте тоже есть
       let numberOfSlots =
         (activityInTimeslot.allocatedTimeslot.end - currentTimeslot.begining) /
         1000 /
@@ -125,12 +133,18 @@ const mapTimeslots = (currentHour, activities) => {
       mappedTimeslots.push({
         content: (
           <Activity
-            name={activityInTimeslot.name}
-            allocatedTimeslot={activityInTimeslot.allocatedTimeslot}
+            // вместо этого можно использовать спред оператор, в данном случае он не оправдан
+            // но если подобных пропсов будет в разы больше можно заменить эти строки на вот так
+            // name={activityInTimeslot.name}
+            // allocatedTimeslot={activityInTimeslot.allocatedTimeslot}
+            {...activityInTimeslot}
           />
         ),
         colspan: numberOfSlots
       });
+      // а вот это вообще очень странно, и потенциально может вызывать неимоверное количество ошибок
+      // возможно стоит вначале проверять заполнена ли ячейка, и если да то переходить к следующей итерации,
+      // а не самому выщитывать сколько перепрыгивать. (Если я вообще правильно понял что тут проихсодит)
       i += numberOfSlots - 1;
     }
   }
@@ -151,34 +165,39 @@ const filterActivities = (activities, timeslot) => {
 };
 
 const createHourRows = hours => {
-  let hourRows = [];
-
-  for (let i = 0; i < hours.length; i++) {
-    const currentHour = new Timeslot(hours[i], 60);
+  
+ // во-первых тут не нужен лет, потому что массив ты мутируешь а не переопределяешь, будет работать и с конст
+ // let hourRows = [];
+  
+ // во вторых я бы его инициализацию переписал бы так:
+  const hourRows = hours.map(item => {
+    const currentHour = new Timeslot(item, 60);
     const activitiesThisHour = filterActivities(getActivities(), currentHour);
     console.log("Activities this hour:", activitiesThisHour);
     const hourRow = mapTimeslots(currentHour, activitiesThisHour);
-    hourRows.push(hourRow);
-  }
-  return hourRows;
-};
+    return hourRow;
+  });
 
 const Timetable = () => {
   const rows = createHourRows(schedule.workingHours);
   return (
+    // стили не по стилю :D
     <Table style={{ tableLayout: "fixed", minWidth: "340px" }}>
-      <TableHead></TableHead>
+      <TableHead/>
       <TableBody>
         {rows.map(row => (
           <TableRow key={row[0].content}>
             {row.map((cell, index) => (
               <TableCell
+                // ставить index в key не самая хорошая идея,
+                // потому что если ты список будешь изменять (вставлять/удалять элементы)
+                // оно все будет очень не хорошо перерисовываться
                 key={index}
-                align={"center"}
+                align="center"
                 style={index === 0 ? timeStyle : style}
                 colSpan={cell.colspan}
               >
-                {cell.content ? cell.content : "Hey"}
+                {cell.content || "Hey"}
               </TableCell>
             ))}
           </TableRow>
